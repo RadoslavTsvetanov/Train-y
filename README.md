@@ -77,7 +77,7 @@ Also there can be entity specific posts which you can create to a certain line o
 
 Where this is helpfuul?
 
-well it could serve as an easy way to do "podpiski" for example in the recent events of calling off multiple lines of the night transport there has to be a "podpiska" in which people 
+well it could serve as an easy way to do "podpiski" for example in the recent events of calling off multiple lines of the night transport there has to be a "podpiska" in which people needed to either have a digital signiture or hace a provide signature ein place so instead the forums can work as official  "podpiski" or places to post official news and like that it is centralized 
 
 
 ## How we (do/aim to do) this 
