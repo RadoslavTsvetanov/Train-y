@@ -75,7 +75,9 @@ A bus has very unfavorable schedule, well you can create a tread in which you ma
 
 Also there can be entity specific posts which you can create to a certain line or even a bus (yeah you can track individual buses, the metro tracks the buses with identifiiers why shouldnt we have this info too). For example you go into the infamous 88 which has missing tire guard if you see this you can easily create a post in the thread for this specific bus (the bus nu,ber can be easily gotten by just opening your map and click on the bus you are in which will bring up all kinds of metadata including the bus number)
 
+Where this is helpfuul?
 
+well it could serve as an easy way to do "podpiski" for example in the recent events of calling off multiple lines of the night transport there has to be a "podpiska" in which people 
 
 
 ## How we (do/aim to do) this 
