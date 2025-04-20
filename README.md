@@ -30,6 +30,37 @@ We all know about buying tickets online but why not buying cards online with the
 
 #### Easy validation
 
+## Architecture
+![image](https://github.com/user-attachments/assets/f13895f3-bd10-46c2-a2fb-86199668a987)
+
+### Technologies and usage 
+
+#### Cassandra
+works as a cache for already performed time queries since it is write biased (e.g. this trives for more frequent writes than reads) and non relational (like a time query is self contained and does not need any relations) hence why its wirte biased just as this kind of data. Also since data is not realtional its very tempting to put it into such storage which can scale so easily horizontally\
+
+#### Postgre (with timescale)
+Main data storage plus time series data
+? why time data too -> well even though cassandra would be faster than postgre timescale is faster than cassandra 
+
+![image](https://github.com/user-attachments/assets/e881db9d-b4d4-43ef-926e-4274444dae48)
+
+#### Redis 
+
+since websockets connections need to be ephemeral we need to save them in a cache and so i chose redis for the fast access (unfortunately it is redis not valkey)
+
+#### K8s 
+
+for orchestarting cintainers, load balancers, easy monitring, all the goodies
+
+#### terraform
+
+infra as code
+
+#### ansible 
+for infra as code maintance of the cluster (e.g. after the initial spinup from tf)
+
+
+
 Since you need to validate you are when you login you will no longer need to present documents that you are a student for example to check this it will be integrated with exciting infrastructure
 
 #### Easy communication with the bus driver
@@ -56,3 +87,6 @@ Each bus recieves a preconfigured device which has all the metadata preconfigure
 ### Our app tracks you 
 
 To collect data about bussiness we have access to the your location and we passively monitpor you without the need of interaction (which is way better than the current way which is to scan your card in one of these places in the bus which one rarely does since he has no incentive to do so, while you have an incentive to use our app)
+
+### Putting in prod
+since this app needs to operate closely woth government services we dont want to be a third party but instead provide this to the governemnt to become first party system for easier integration and handling og other legal things 
