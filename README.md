@@ -1,3 +1,7 @@
+# DISCLAIMER
+For concerns about the commits this project was originally part of https://github.com/RadoslavTsvetanov/custom-express so most of the commits for the backend are there
+
+
 # Train-y
 
 App which aims to make public transport better by simplyfying the information flow 
