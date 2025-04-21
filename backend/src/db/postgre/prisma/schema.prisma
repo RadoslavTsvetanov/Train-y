@@ -1,0 +1,77 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Transport {
+  id            String               @id @default(uuid())
+  type          String
+  line          String
+
+  events        TransportEvent[]     // Optional event logs
+  realtimeData  RealtimeDataEntry[]
+}
+
+model TransportEvent {
+  id          String   @id @default(uuid())
+  transportId String
+  timestamp   DateTime
+  payload     Json
+
+  transport   Transport @relation(fields: [transportId], references: [id])
+}
+
+model RealtimeDataEntry {
+  id          String   @id @default(uuid())
+  timestamp   DateTime @default(now())
+
+  transportId String
+  transport   Transport @relation(fields: [transportId], references: [id])
+
+  dataEntry   DataEntry @relation(fields: [dataEntryId], references: [id]) // we decuple the actual data saved so that it it easier to change later
+  dataEntryId String    @unique
+}
+
+model DataEntry {
+  id      String @id @default(uuid())
+  payload Json   // Could later become a pointer to a file/blob/S3
+
+  RealtimeDataEntry RealtimeDataEntry[]
+}
+
+model User {
+  id       String    @id @default(uuid())
+  username String    @unique
+  email    String    @unique
+  messages Message[]
+}
+
+model Forum {
+  id       String    @id @default(uuid())
+  title    String
+  type     String
+  messages Message[]
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+
+  userId    String
+  forumId   String
+
+  user      User     @relation(fields: [userId], references: [id])
+  forum     Forum    @relation(fields: [forumId], references: [id])
+}
