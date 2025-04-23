@@ -3,13 +3,19 @@ import { IForumsService } from "../../../../modules/services/forum/interface";
 import { IAuth } from "../../../../modules/services/auth/interface";
 import { map } from "@custom-express/better-standard-library";
 import { isAuthorizedSimple } from "../../hooks/autorizations";
+import { InMemoryForumsService } from "../../../../modules/services/forum/implemetations/inMemory";
+import { InMemoryAuthService } from "../../../../modules/services/auth/implementations/inMemory";
 
 function provideContext(): {services: {forum: IForumsService, auth: IAuth}} {
-  return {}
+  return {services: {forum : new InMemoryForumsService,auth: new InMemoryAuthService()} }
 }
 
 export const forums = new Elysia({ prefix: "/forums" })
   .state(provideContext())
+  .derive(({ request }) => {
+    return {
+    token: request.headers.get("authorization")
+  }})
   .post(
     "/:id",
     async ({ params, store, token, body }) => {
@@ -27,20 +33,6 @@ export const forums = new Elysia({ prefix: "/forums" })
 
       return 200
    }, {
-    beforeHandle(v) { // TODO: extract into reusable component where you just add the thing that should be intreptredted as id 
-    //     let result: "" | "none" = "" as "" | "none // a bit dumb refactor it "
-    //   // TODO make it so that middleware adds it to context
-    //   map(v.request.headers.get("authorization"), async token => {
-
-    //     map(await v.store.services.auth.getUserFromToken(token as string), r => {
-    //       r.ifNone(() => result = "none")
-    //     })
-    //   })
-    //   if (result === "none") {
-    //     return error(403)
-      // }
-      return isAuthorizedSimple({token: token, id: v.body.userId})
-    },
     body: t.Object({
       userId: t.String(),
       message: t.String()
@@ -54,11 +46,12 @@ export const forums = new Elysia({ prefix: "/forums" })
   })
   .post("/new", ({ body, store }) => {
     if (body.isVoting) {
-      store.services.forum.create(body.isVoting ? "voting" : "normal")
+      store.services.forum.create(body.isVoting ? "voting" : "normal", body.title)
     }
   }, {
     body: t.Object({
       name: t.String(),
-      isVoting: t.Boolean()
+      isVoting: t.Boolean(),
+      title: t.String()
     })
   })

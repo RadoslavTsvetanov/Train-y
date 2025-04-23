@@ -5,6 +5,7 @@ import { CassandraDataRepo } from "../../../repos/savedTimeQueries/implementatio
 import { ITimeRangeCacheRepository } from "../../../repos/savedTimeQueries/interface";
 import { ITimestampDataRepo } from "../../../repos/timestamp/interface";
 import {  ITimeSeriesService } from "../interface";
+import { RealtimeDataEntry } from "../../../../db/postgre/src/generated/prisma";
 
 
 export class DataService implements ITimeSeriesService {
@@ -13,7 +14,8 @@ export class DataService implements ITimeSeriesService {
     private timestampStorage: ITimestampDataRepo;
     
     constructor(cache: ITimeRangeCacheRepository, timestampStorage: ITimestampDataRepo) {
-
+        this.cache = cache
+        this.timestampStorage = timestampStorage
     }
     async getEntriesDuring(query: timeQuery): Promise<Optionable<Event>> {
         let result = null;
@@ -21,7 +23,11 @@ export class DataService implements ITimeSeriesService {
             ifNone: async () => { 
                 (await this.timestampStorage.getRealtimeData(query)).ifCanBeUnpacked(v => {
                     result = v 
-                    this.cache.save(v)
+                    this.cache.save({
+                        start_timestamp: query.start,
+                        end_timestamp: query.end,
+                        context: JSON.stringify(v)
+                    })
                 })
             },
             ifNotNone: v => result = v
@@ -29,7 +35,7 @@ export class DataService implements ITimeSeriesService {
         return new Optionable(result)
     }
 
-    async addTimestampData(e: Event) {
+    async addTimestampData(e: RealtimeDataEntry) {
 
         this.timestampStorage.saveTimestampedData(e)
     }

@@ -2,6 +2,7 @@ import { Optionable } from "@custom-express/better-standard-library";
 import { Event } from "../../../db/cassandra/main";
 import { VPromise } from "../../../types/Promises/vpromise";
 import { timeQuery } from "../../../types/timeQuery";
+import { RealtimeDataEntry } from "../../../db/postgre/src/generated/prisma";
 
 export interface ITimeSeriesService{
     /**
@@ -9,5 +10,5 @@ export interface ITimeSeriesService{
      * 
      */
     getEntriesDuring(query: timeQuery): Promise<Optionable<Event>>
-    addTimestampData(e: Event): VPromise
+    addTimestampData(e: RealtimeDataEntry): VPromise
 }

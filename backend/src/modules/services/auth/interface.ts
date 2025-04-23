@@ -1,6 +1,6 @@
 import { Optionable } from "@custom-express/better-standard-library"
 import { id } from "../../../types/id"
-import { User } from "../../../db/postgre/src/generated/prisma"
+import { User } from "@prisma/client"
 
 export interface IAuth {
     //Intended behaviour if the token does not exist return false to simplify working with this  service

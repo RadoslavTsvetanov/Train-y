@@ -3,9 +3,9 @@ import { RealtimeDataEntry } from "../../../db/postgre/src/generated/prisma";
 import { id } from "../../../types/id";
 import { VPromise } from "../../../types/Promises/vpromise";
 import { timeQuery } from "../../../types/timeQuery";
-import { TODO } from "../../../types/todo";
+import { TimeStampData } from "../../../types/timstampData";
 
 export interface ITimestampDataRepo {
     saveTimestampedData(v: RealtimeDataEntry): VPromise
-    getRealtimeData(timeQuery: timeQuery): Promise<Optionable<TODO>>
+    getRealtimeData(timeQuery: timeQuery): Promise<Optionable<RealtimeDataEntry[]>>
 }

@@ -1,5 +1,6 @@
 {
-    "compilerOptions": {
-        // "strict": true
-    }
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "strict": true
+  }
 }

@@ -1,4 +1,5 @@
 import Elysia from "elysia";
+import { InMemoryAuthService } from "../../../../modules/services/auth/implementations/inMemory";
 
 export const authenticationMiddleware = new Elysia()
   .onRequest(({ request, set }) => {
