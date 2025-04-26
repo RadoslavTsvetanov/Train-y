@@ -42,7 +42,8 @@ fun MyLocationButton(
     ) {
         Icon(
             imageVector = Icons.Default.Home,
-            contentDescription = "My Location"
+            contentDescription = "My Location",
+            tint = Color.Black,
         )
     }
 }

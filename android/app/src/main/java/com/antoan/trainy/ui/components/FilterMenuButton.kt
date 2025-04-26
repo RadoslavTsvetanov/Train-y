@@ -32,7 +32,8 @@ fun FilterMenuButton(
     ) {
         Icon(
             imageVector = Icons.Default.Settings,
-            contentDescription = "Filter Transport"
+            contentDescription = "Filter Transport",
+            tint = Color.Black,
         )
     }
 }

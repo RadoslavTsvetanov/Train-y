@@ -3,6 +3,7 @@ package com.antoan.trainy.ui.screens
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
+import android.os.Looper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -16,7 +17,7 @@ import androidx.core.content.ContextCompat
 import com.antoan.trainy.ui.components.FilterMenu
 import com.antoan.trainy.ui.components.FilterMenuButton
 import com.antoan.trainy.ui.components.MyLocationButton
-import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.*
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -32,27 +33,40 @@ fun HomeScreen() {
     val context = LocalContext.current
     var hasLocationPermission by remember { mutableStateOf(false) }
     val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
 
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) { perms ->
-        val fine   = perms[Manifest.permission.ACCESS_FINE_LOCATION]  == true
-        val coarse = perms[Manifest.permission.ACCESS_COARSE_LOCATION] == true
-        hasLocationPermission = fine || coarse
+    // 1. LocationRequest for continuous updates
+    val locationRequest = remember {
+        LocationRequest.create().apply {
+            interval = 2000         // 2 seconds
+            fastestInterval = 1000  // 1 second
+            priority = Priority.PRIORITY_HIGH_ACCURACY
+        }
+    }
 
-        if (hasLocationPermission) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED
-            ) {
-                fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
-                    loc?.let { userLocation = LatLng(it.latitude, it.longitude) }
-                }
+    // 2. Callback to receive location updates
+    val locationCallback = remember {
+        object : LocationCallback() {
+            override fun onLocationResult(result: LocationResult) {
+                val loc = result.lastLocation ?: return
+                userLocation = LatLng(loc.latitude, loc.longitude)
             }
         }
     }
+
+    // 3. Hold latest userLocation
+
+
+    // 4. Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { perms ->
+        hasLocationPermission = perms[Manifest.permission.ACCESS_FINE_LOCATION] == true
+                || perms[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+    }
+
+    // 5. Ask for permissions on first composition
     LaunchedEffect(Unit) {
         permissionLauncher.launch(arrayOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
@@ -60,25 +74,39 @@ fun HomeScreen() {
         ))
     }
 
+    // 6. Start/stop location updates when permission changes
+    LaunchedEffect(hasLocationPermission) {
+        if (hasLocationPermission) {
+            fusedLocationClient.requestLocationUpdates(
+                locationRequest, locationCallback, Looper.getMainLooper()
+            )
+        } else {
+            fusedLocationClient.removeLocationUpdates(locationCallback)
+        }
+    }
+
+    // 7. Map props & camera
     val mapProperties = remember(hasLocationPermission) {
         MapProperties(isMyLocationEnabled = hasLocationPermission)
     }
-
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(
             userLocation ?: LatLng(42.6977, 23.3219),
             16f
         )
     }
+
+    // 8. Animate camera to new userLocation instantly
     LaunchedEffect(userLocation) {
-        userLocation?.let {
+        userLocation?.let { loc ->
             cameraPositionState.move(
                 CameraUpdateFactory.newCameraPosition(
-                    CameraPosition.fromLatLngZoom(it, 16f)
+                    CameraPosition.fromLatLngZoom(loc, 16f)
                 )
             )
         }
     }
+
     val busPassengers     = listOf(12, 8)
     val trolleyPassengers = listOf(5, 3)
     val tramPassengers    = listOf(20, 14)
@@ -338,18 +366,17 @@ fun HomeScreen() {
         Box(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .wrapContentSize(Alignment.BottomStart)
-                .padding(16.dp)
+                .padding(16.dp, 16.dp, 16.dp, 30.dp)
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (hasLocationPermission && userLocation != null) {
                     MyLocationButton(
-                        userLocation         = userLocation!!,
-                        cameraPositionState  = cameraPositionState,
-                        coroutineScope       = coroutineScope
+                        userLocation        = userLocation!!,
+                        cameraPositionState = cameraPositionState,
+                        coroutineScope      = rememberCoroutineScope()
                     )
                 }
-                FilterMenuButton(onClick = { menuExpanded = true })
+                FilterMenuButton(onClick = { /* toggle menu */ })
             }
             FilterMenu(
                 menuExpanded         = menuExpanded,
