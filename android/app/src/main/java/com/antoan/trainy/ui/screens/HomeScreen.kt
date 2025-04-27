@@ -10,6 +10,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -17,19 +22,20 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.antoan.trainy.R
 import com.antoan.trainy.navigation.Destinations
 import com.antoan.trainy.ui.components.AnalyticsButton
 import com.antoan.trainy.ui.components.CardButton
-import com.antoan.trainy.ui.components.FilterMenu
+import com.antoan.trainy.ui.components.FilterBottomSheet
 import com.antoan.trainy.ui.components.FilterMenuButton
+import com.antoan.trainy.ui.components.ForumsButton
 import com.antoan.trainy.ui.components.MyLocationButton
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -49,9 +55,11 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.hypot
 import kotlin.math.sqrt
 
+@OptIn(ExperimentalMaterial3Api::class)
 @SuppressLint("MissingPermission")
 @Composable
 fun HomeScreen(
@@ -63,7 +71,7 @@ fun HomeScreen(
 
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
     var followUser by remember { mutableStateOf(true) }
-    val coroutineScope = rememberCoroutineScope()
+    val scope = rememberCoroutineScope()
 
     val locationRequest = remember {
         LocationRequest.create().apply {
@@ -250,7 +258,8 @@ fun HomeScreen(
         }
     }
 
-    var menuExpanded by remember { mutableStateOf(false) }
+
+
     var showBuses by remember { mutableStateOf(true) }
     var showTrolley by remember { mutableStateOf(true) }
     var showTrams by remember { mutableStateOf(true) }
@@ -265,6 +274,17 @@ fun HomeScreen(
             isMyLocationEnabled = hasLocationPermission,
             mapStyleOptions     = darkMapStyle   // ← apply dark mode here
         )
+    }
+
+    var isSheetOpen by rememberSaveable { mutableStateOf(false) }
+
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
+
+    LaunchedEffect(isSheetOpen) {
+        if (isSheetOpen) sheetState.show()
+        else sheetState.hide()
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -347,26 +367,15 @@ fun HomeScreen(
                     MyLocationButton(
                         userLocation        = userLocation ?: LatLng(42.6977, 23.3219),
                         cameraPositionState = cameraPositionState,
-                        coroutineScope      = coroutineScope
+                        coroutineScope      = scope
                     )
                 }
                 CardButton(onClick = { navController.navigate(Destinations.Card.route) })
 
             }
-            FilterMenu(
-                menuExpanded         = menuExpanded,
-                onMenuExpandedChange = { menuExpanded = it },
-                showBuses            = showBuses,
-                onShowBusesChange    = { showBuses = it },
-                showTrolley          = showTrolley,
-                onShowTrolleyChange  = { showTrolley = it },
-                showTrams            = showTrams,
-                onShowTramsChange    = { showTrams = it },
-                showMetro            = showMetro,
-                onShowMetroChange    = { showMetro = it },
-                modifier             = Modifier.align(Alignment.TopEnd),
-                menuOffset           = DpOffset(0.dp, (-8).dp)
-            )
+
+
+
         }
         Box(
             modifier = Modifier
@@ -374,9 +383,28 @@ fun HomeScreen(
                 .padding(16.dp, 16.dp, 16.dp, 30.dp)
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ForumsButton(onClick = { navController.navigate(Destinations.Forums.route) })
                 AnalyticsButton(onClick = { navController.navigate(Destinations.Analytics.route) })
-                FilterMenuButton(onClick = { menuExpanded = !menuExpanded })
+                FilterMenuButton(onClick = {
+
+                    isSheetOpen = true
+                })
             }
+        }
+        if (isSheetOpen) {
+            FilterBottomSheet(
+                sheetState       = sheetState,
+                onDismissRequest = { isSheetOpen = false },
+                showBuses        = showBuses,
+                onShowBusesChange    = { showBuses = it },
+                showTrolley      = showTrolley,
+                onShowTrolleyChange  = { showTrolley = it },
+                showTrams        = showTrams,
+                onShowTramsChange    = { showTrams = it },
+                showMetro        = showMetro,
+                onShowMetroChange    = { showMetro = it },
+            )
         }
     }
 }
+

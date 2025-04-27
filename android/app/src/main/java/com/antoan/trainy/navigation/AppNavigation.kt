@@ -47,7 +47,7 @@ fun AppNavigation(
                 val id = backStackEntry.arguments?.getString("id")
                 ForumInfoScreen(id = id, onBack = { navController.popBackStack() })
             }
-            composable(Destinations.Analytics.route) { AnalyticsScreen() }
+            composable(Destinations.Analytics.route) { AnalyticsScreen(onBack = { navController.popBackStack() }) }
         }
     }
 }

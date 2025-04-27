@@ -12,11 +12,7 @@ openApiGenerate {
 
     inputSpec.set("$rootDir/app/src/main/res/openapi.json")
 
-    outputDir.set(
-        layout.buildDirectory
-            .dir("generated/openapi")
-            .map { it.asFile.absolutePath }
-    )
+    outputDir.set("$rootDir/app/build/generated/openapi")
 
     invokerPackage.set("com.antoan.trainy.openapi")
     apiPackage.set("com.antoan.trainy.openapi.apis")
