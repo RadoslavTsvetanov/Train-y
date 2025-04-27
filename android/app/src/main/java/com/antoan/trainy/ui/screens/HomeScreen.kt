@@ -2,50 +2,77 @@ package com.antoan.trainy.ui.screens
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.pm.PackageManager
 import android.os.Looper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
+import androidx.navigation.NavController
+import com.antoan.trainy.R
+import com.antoan.trainy.navigation.Destinations
+import com.antoan.trainy.ui.components.AnalyticsButton
+import com.antoan.trainy.ui.components.CardButton
 import com.antoan.trainy.ui.components.FilterMenu
 import com.antoan.trainy.ui.components.FilterMenuButton
 import com.antoan.trainy.ui.components.MyLocationButton
-import com.google.android.gms.location.*
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.google.maps.android.compose.*
+import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.maps.android.compose.CameraMoveStartedReason
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.MapProperties
+import com.google.maps.android.compose.MapUiSettings
+import com.google.maps.android.compose.Marker
+import com.google.maps.android.compose.MarkerState
+import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.delay
 import kotlin.math.hypot
 import kotlin.math.sqrt
 
 @SuppressLint("MissingPermission")
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    navController: NavController
+) {
     val context = LocalContext.current
     var hasLocationPermission by remember { mutableStateOf(false) }
     val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
 
     var userLocation by remember { mutableStateOf<LatLng?>(null) }
+    var followUser by remember { mutableStateOf(true) }
+    val coroutineScope = rememberCoroutineScope()
 
-    // 1. LocationRequest for continuous updates
     val locationRequest = remember {
         LocationRequest.create().apply {
-            interval = 2000         // 2 seconds
-            fastestInterval = 1000  // 1 second
+            interval = 2000
+            fastestInterval = 1000
             priority = Priority.PRIORITY_HIGH_ACCURACY
         }
     }
 
-    // 2. Callback to receive location updates
     val locationCallback = remember {
         object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
@@ -55,10 +82,6 @@ fun HomeScreen() {
         }
     }
 
-    // 3. Hold latest userLocation
-
-
-    // 4. Permission launcher
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { perms ->
@@ -66,15 +89,15 @@ fun HomeScreen() {
                 || perms[Manifest.permission.ACCESS_COARSE_LOCATION] == true
     }
 
-    // 5. Ask for permissions on first composition
     LaunchedEffect(Unit) {
-        permissionLauncher.launch(arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
-        ))
+        permissionLauncher.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        )
     }
 
-    // 6. Start/stop location updates when permission changes
     LaunchedEffect(hasLocationPermission) {
         if (hasLocationPermission) {
             fusedLocationClient.requestLocationUpdates(
@@ -85,10 +108,7 @@ fun HomeScreen() {
         }
     }
 
-    // 7. Map props & camera
-    val mapProperties = remember(hasLocationPermission) {
-        MapProperties(isMyLocationEnabled = hasLocationPermission)
-    }
+
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(
             userLocation ?: LatLng(42.6977, 23.3219),
@@ -96,175 +116,120 @@ fun HomeScreen() {
         )
     }
 
-    // 8. Animate camera to new userLocation instantly
-    LaunchedEffect(userLocation) {
-        userLocation?.let { loc ->
-            cameraPositionState.move(
-                CameraUpdateFactory.newCameraPosition(
-                    CameraPosition.fromLatLngZoom(loc, 16f)
+    LaunchedEffect(userLocation, followUser) {
+        if (followUser) {
+            userLocation?.let { loc ->
+                cameraPositionState.animate(
+                    CameraUpdateFactory.newCameraPosition(
+                        CameraPosition.fromLatLngZoom(loc, 16f)
+                    )
                 )
-            )
+            }
         }
     }
 
-    val busPassengers     = listOf(12, 8)
-    val trolleyPassengers = listOf(5, 3)
-    val tramPassengers    = listOf(20, 14)
-    val metroPassengers   = listOf(30, 25)
-
-    val busPositions     = remember { mutableStateListOf<LatLng>() }
-    val busDirs          = remember { mutableStateListOf<Pair<Double,Double>>() }
-    val busHasPassed     = remember { mutableStateListOf<Boolean>() }
-
+    val busPositions = remember { mutableStateListOf<LatLng>() }
+    val busDirs = remember { mutableStateListOf<Pair<Double, Double>>() }
+    val busHasPassed = remember { mutableStateListOf<Boolean>() }
     val trolleyPositions = remember { mutableStateListOf<LatLng>() }
-    val trolleyDirs      = remember { mutableStateListOf<Pair<Double,Double>>() }
+    val trolleyDirs = remember { mutableStateListOf<Pair<Double, Double>>() }
     val trolleyHasPassed = remember { mutableStateListOf<Boolean>() }
+    val tramPositions = remember { mutableStateListOf<LatLng>() }
+    val tramDirs = remember { mutableStateListOf<Pair<Double, Double>>() }
+    val tramHasPassed = remember { mutableStateListOf<Boolean>() }
+    val metroPositions = remember { mutableStateListOf<LatLng>() }
+    val metroDirs = remember { mutableStateListOf<Pair<Double, Double>>() }
+    val metroHasPassed = remember { mutableStateListOf<Boolean>() }
 
-    val tramPositions    = remember { mutableStateListOf<LatLng>() }
-    val tramDirs         = remember { mutableStateListOf<Pair<Double,Double>>() }
-    val tramHasPassed    = remember { mutableStateListOf<Boolean>() }
+    val busPassengers = listOf(12, 8)
+    val trolleyPassengers = listOf(5, 3)
+    val tramPassengers = listOf(20, 14)
+    val metroPassengers = listOf(30, 25)
 
-    val metroPositions   = remember { mutableStateListOf<LatLng>() }
-    val metroDirs        = remember { mutableStateListOf<Pair<Double,Double>>() }
-    val metroHasPassed   = remember { mutableStateListOf<Boolean>() }
+    LaunchedEffect(Unit) {
+        while (userLocation == null) delay(100)
+        val start = userLocation!!
 
-    LaunchedEffect(userLocation) {
-        userLocation?.let { user ->
-
-            busPositions.clear()
-            busPositions += LatLng(user.latitude  + 0.002, user.longitude)
-            busPositions += LatLng(user.latitude  - 0.002, user.longitude)
-            busDirs.clear(); busHasPassed.clear()
-            busPositions.forEach { pos ->
-                val dx = user.longitude - pos.longitude
-                val dy = user.latitude  - pos.latitude
-                val len = sqrt(dx*dx + dy*dy)
-                busDirs += (dx/len to dy/len)
-                busHasPassed += false
+        fun initLine(
+            positions: MutableList<LatLng>,
+            dirs: MutableList<Pair<Double, Double>>,
+            passed: MutableList<Boolean>,
+            offsets: List<Pair<Double, Double>>
+        ) {
+            positions.clear()
+            offsets.forEach { (dy, dx) ->
+                positions += LatLng(start.latitude + dy, start.longitude + dx)
             }
-
-            trolleyPositions.clear()
-            trolleyPositions += LatLng(user.latitude, user.longitude + 0.002)
-            trolleyPositions += LatLng(user.latitude, user.longitude - 0.002)
-            trolleyDirs.clear(); trolleyHasPassed.clear()
-            trolleyPositions.forEach { pos ->
-                val dx = user.longitude - pos.longitude
-                val dy = user.latitude  - pos.latitude
-                val len = sqrt(dx*dx + dy*dy)
-                trolleyDirs += (dx/len to dy/len)
-                trolleyHasPassed += false
+            dirs.clear(); passed.clear()
+            positions.forEach { pos ->
+                val deltaX = start.longitude - pos.longitude
+                val deltaY = start.latitude - pos.latitude
+                val len = sqrt(deltaX * deltaX + deltaY * deltaY)
+                dirs += (deltaX / len to deltaY / len)
+                passed += false
             }
+        }
 
-            tramPositions.clear()
-            tramPositions += LatLng(user.latitude + 0.002, user.longitude + 0.002)
-            tramPositions += LatLng(user.latitude - 0.002, user.longitude - 0.002)
-            tramDirs.clear(); tramHasPassed.clear()
-            tramPositions.forEach { pos ->
-                val dx = user.longitude - pos.longitude
-                val dy = user.latitude  - pos.latitude
-                val len = sqrt(dx*dx + dy*dy)
-                tramDirs += (dx/len to dy/dy)
-                tramHasPassed += false
-            }
+        initLine(busPositions, busDirs, busHasPassed, listOf(0.002 to 0.0, -0.002 to 0.0))
+        initLine(
+            trolleyPositions,
+            trolleyDirs,
+            trolleyHasPassed,
+            listOf(0.0 to 0.002, 0.0 to -0.002)
+        )
+        initLine(tramPositions, tramDirs, tramHasPassed, listOf(0.002 to 0.002, -0.002 to -0.002))
+        initLine(
+            metroPositions,
+            metroDirs,
+            metroHasPassed,
+            listOf(0.002 to -0.002, -0.002 to 0.002)
+        )
 
-            metroPositions.clear()
-            metroPositions += LatLng(user.latitude + 0.002, user.longitude - 0.002)
-            metroPositions += LatLng(user.latitude - 0.002, user.longitude + 0.002)
-            metroDirs.clear(); metroHasPassed.clear()
-            metroPositions.forEach { pos ->
-                val dx = user.longitude - pos.longitude
-                val dy = user.latitude  - pos.latitude
-                val len = sqrt(dx*dx + dy*dy)
-                metroDirs += (dx/len to dy/len)
-                metroHasPassed += false
-            }
+        val step = 0.000005
+        val passThreshold = 0.0003
 
-            val step = 0.000005
-            val passThreshold = 0.0003
-            while(true) {
-                delay(100L)
-
-                for(i in busPositions.indices) {
-                    var (dx, dy) = busDirs[i]
+        while (true) {
+            delay(100)
+            fun stepLine(
+                positions: MutableList<LatLng>,
+                dirs: MutableList<Pair<Double, Double>>,
+                passed: MutableList<Boolean>
+            ) {
+                for (i in positions.indices) {
+                    var (dx, dy) = dirs[i]
+                    val loc = userLocation ?: continue
                     val dist = hypot(
-                        busPositions[i].latitude  - user.latitude,
-                        busPositions[i].longitude - user.longitude
+                        positions[i].latitude - loc.latitude,
+                        positions[i].longitude - loc.longitude
                     )
-                    if (!busHasPassed[i] && dist < passThreshold) {
-                        busHasPassed[i] = true
+                    if (!passed[i] && dist < passThreshold) {
+                        passed[i] = true
                         dx = -dx; dy = -dy
-                        busDirs[i] = dx to dy
+                        dirs[i] = dx to dy
                     }
-                    val old = busPositions[i]
-                    busPositions[i] = LatLng(
-                        old.latitude  + dy * step,
-                        old.longitude + dx * step
-                    )
-                }
-
-                for(i in trolleyPositions.indices) {
-                    var (dx, dy) = trolleyDirs[i]
-                    val dist = hypot(
-                        trolleyPositions[i].latitude  - user.latitude,
-                        trolleyPositions[i].longitude - user.longitude
-                    )
-                    if (!trolleyHasPassed[i] && dist < passThreshold) {
-                        trolleyHasPassed[i] = true
-                        dx = -dx; dy = -dy
-                        trolleyDirs[i] = dx to dy
-                    }
-                    val old = trolleyPositions[i]
-                    trolleyPositions[i] = LatLng(
-                        old.latitude  + dy * step,
-                        old.longitude + dx * step
-                    )
-                }
-
-                for(i in tramPositions.indices) {
-                    var (dx, dy) = tramDirs[i]
-                    val dist = hypot(
-                        tramPositions[i].latitude  - user.latitude,
-                        tramPositions[i].longitude - user.longitude
-                    )
-                    if (!tramHasPassed[i] && dist < passThreshold) {
-                        tramHasPassed[i] = true
-                        dx = -dx; dy = -dy
-                        tramDirs[i] = dx to dy
-                    }
-                    val old = tramPositions[i]
-                    tramPositions[i] = LatLng(
-                        old.latitude  + dy * step,
-                        old.longitude + dx * step
-                    )
-                }
-
-                for(i in metroPositions.indices) {
-                    var (dx, dy) = metroDirs[i]
-                    val dist = hypot(
-                        metroPositions[i].latitude  - user.latitude,
-                        metroPositions[i].longitude - user.longitude
-                    )
-                    if (!metroHasPassed[i] && dist < passThreshold) {
-                        metroHasPassed[i] = true
-                        dx = -dx; dy = -dy
-                        metroDirs[i] = dx to dy
-                    }
-                    val old = metroPositions[i]
-                    metroPositions[i] = LatLng(
-                        old.latitude  + dy * step,
+                    val old = positions[i]
+                    positions[i] = LatLng(
+                        old.latitude + dy * step,
                         old.longitude + dx * step
                     )
                 }
             }
+
+            stepLine(busPositions, busDirs, busHasPassed)
+            stepLine(trolleyPositions, trolleyDirs, trolleyHasPassed)
+            stepLine(tramPositions, tramDirs, tramHasPassed)
+            stepLine(metroPositions, metroDirs, metroHasPassed)
         }
     }
 
     var selectedBus by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(cameraPositionState.cameraMoveStartedReason) {
         if (cameraPositionState.cameraMoveStartedReason == CameraMoveStartedReason.GESTURE) {
+            followUser = false
             selectedBus = null
         }
     }
+
     LaunchedEffect(selectedBus) {
         selectedBus?.let { id ->
             while (selectedBus == id) {
@@ -273,7 +238,7 @@ fun HomeScreen() {
                     in 3..4 -> trolleyPositions[id - 3]
                     in 5..6 -> tramPositions[id - 5]
                     in 7..8 -> metroPositions[id - 7]
-                    else    -> return@LaunchedEffect
+                    else -> return@LaunchedEffect
                 }
                 cameraPositionState.animate(
                     CameraUpdateFactory.newCameraPosition(
@@ -286,21 +251,30 @@ fun HomeScreen() {
     }
 
     var menuExpanded by remember { mutableStateOf(false) }
-    var showBuses   by remember { mutableStateOf(true) }
+    var showBuses by remember { mutableStateOf(true) }
     var showTrolley by remember { mutableStateOf(true) }
-    var showTrams   by remember { mutableStateOf(true) }
-    var showMetro   by remember { mutableStateOf(true) }
+    var showTrams by remember { mutableStateOf(true) }
+    var showMetro by remember { mutableStateOf(true) }
 
-    val coroutineScope = rememberCoroutineScope()
+    val darkMapStyle = remember {
+        MapStyleOptions.loadRawResourceStyle(context, R.raw.map_style_dark)
+    }
+
+    val mapProperties = remember(hasLocationPermission) {
+        MapProperties(
+            isMyLocationEnabled = hasLocationPermission,
+            mapStyleOptions     = darkMapStyle   // ← apply dark mode here
+        )
+    }
 
     Box(Modifier.fillMaxSize()) {
         GoogleMap(
-            modifier            = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
-            properties          = mapProperties,
-            uiSettings          = MapUiSettings(
-                zoomControlsEnabled     = true,
-                mapToolbarEnabled       = false,
+            properties = mapProperties,
+            uiSettings = MapUiSettings(
+                zoomControlsEnabled = false,
+                mapToolbarEnabled = false,
                 myLocationButtonEnabled = false
             ),
             onMapClick = { selectedBus = null }
@@ -308,10 +282,10 @@ fun HomeScreen() {
             if (showBuses) {
                 busPositions.forEachIndexed { idx, pos ->
                     Marker(
-                        state   = MarkerState(position = pos),
-                        title   = "Bus ${idx + 1}",
+                        state = MarkerState(position = pos),
+                        title = "Bus ${idx + 1}",
                         snippet = "Passengers: ${busPassengers[idx]}",
-                        icon    = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED),
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED),
                         onClick = {
                             selectedBus = 1 + idx
                             false
@@ -322,10 +296,10 @@ fun HomeScreen() {
             if (showTrolley) {
                 trolleyPositions.forEachIndexed { idx, pos ->
                     Marker(
-                        state   = MarkerState(position = pos),
-                        title   = "Trolley ${idx + 1}",
+                        state = MarkerState(position = pos),
+                        title = "Trolley ${idx + 1}",
                         snippet = "Passengers: ${trolleyPassengers[idx]}",
-                        icon    = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN),
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_YELLOW),
                         onClick = {
                             selectedBus = 3 + idx
                             false
@@ -336,10 +310,10 @@ fun HomeScreen() {
             if (showTrams) {
                 tramPositions.forEachIndexed { idx, pos ->
                     Marker(
-                        state   = MarkerState(position = pos),
-                        title   = "Tram ${idx + 1}",
+                        state = MarkerState(position = pos),
+                        title = "Tram ${idx + 1}",
                         snippet = "Passengers: ${tramPassengers[idx]}",
-                        icon    = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE),
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE),
                         onClick = {
                             selectedBus = 5 + idx
                             false
@@ -350,10 +324,10 @@ fun HomeScreen() {
             if (showMetro) {
                 metroPositions.forEachIndexed { idx, pos ->
                     Marker(
-                        state   = MarkerState(position = pos),
-                        title   = "Metro ${idx + 1}",
+                        state = MarkerState(position = pos),
+                        title = "Metro ${idx + 1}",
                         snippet = "Passengers: ${metroPassengers[idx]}",
-                        icon    = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
+                        icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_AZURE),
                         onClick = {
                             selectedBus = 7 + idx
                             false
@@ -369,14 +343,15 @@ fun HomeScreen() {
                 .padding(16.dp, 16.dp, 16.dp, 30.dp)
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (hasLocationPermission && userLocation != null) {
+                if (hasLocationPermission) {
                     MyLocationButton(
-                        userLocation        = userLocation!!,
+                        userLocation        = userLocation ?: LatLng(42.6977, 23.3219),
                         cameraPositionState = cameraPositionState,
-                        coroutineScope      = rememberCoroutineScope()
+                        coroutineScope      = coroutineScope
                     )
                 }
-                FilterMenuButton(onClick = { /* toggle menu */ })
+                CardButton(onClick = { navController.navigate(Destinations.Card.route) })
+
             }
             FilterMenu(
                 menuExpanded         = menuExpanded,
@@ -389,9 +364,19 @@ fun HomeScreen() {
                 onShowTramsChange    = { showTrams = it },
                 showMetro            = showMetro,
                 onShowMetroChange    = { showMetro = it },
-                modifier             = Modifier.align(Alignment.TopStart),
+                modifier             = Modifier.align(Alignment.TopEnd),
                 menuOffset           = DpOffset(0.dp, (-8).dp)
             )
+        }
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp, 16.dp, 16.dp, 30.dp)
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                AnalyticsButton(onClick = { navController.navigate(Destinations.Analytics.route) })
+                FilterMenuButton(onClick = { menuExpanded = !menuExpanded })
+            }
         }
     }
 }
